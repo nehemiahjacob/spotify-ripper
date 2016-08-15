@@ -11,6 +11,170 @@ import os
 import sys
 import base64
 
+class Tags(object):
+
+    def __init__(self, args, idx, track, ripper):
+        self.args = args
+        self.on_error = 'replace' if args.ascii_path_only else 'ignore'
+
+        self.tags = {}
+        self.populate_tags(track, ripper)
+        self.override_tags(idx, track, ripper)
+
+    def create_pair(self, _str):
+        return (_str, to_ascii(_str, self.on_error))
+
+    def idx_of_total_str(self, _idx, _total):
+        if _total > 0:
+            return "%d/%d" % (_idx, _total)
+        else:
+            return "%d" % (_idx)
+
+    def populate_tags(self, track, ripper):
+        args = self.args
+
+        self.tags['album'] = self.create_pair(track.album.name)
+        artists = ", ".join([artist.name for artist in track.artists]) \
+            if args.all_artists else track.artists[0].name
+        self.tags['artists'] = self.create_pair(artists)
+        self.tags['album_artist'] = self.create_pair(track.album.artist.name)
+        self.tags['title'] = self.create_pair(track.name)
+        self.tags['year'] = track.album.year
+        self.tags['disc_idx'] = track.disc
+        self.tags['track_idx'] = track.index
+
+        # calculate num of tracks on disc and num of dics
+        num_discs = 0
+        num_tracks = 0
+        for track_browse in album_browser.tracks:
+            if (track_browse.disc == track.disc and
+                    track_browse.index > track.index):
+                num_tracks = track_browse.index
+            if track_browse.disc > num_discs:
+                num_discs = track_browse.disc
+
+        self.tags['num_discs'] = num_discs
+        self.tags['num_tracks'] = num_tracks
+
+        if args.genres is not None:
+            genres = ripper.web.get_genres(args.genres, track)
+            if genres is not None and genres:
+                self.tags['genres'] = (genres, [to_ascii(genre) for genre in genres])
+
+        # cover art image
+        self.image = None
+        if args.large_cover_art:
+            self.image = ripper.web.get_large_coverart(track.link.uri)
+
+        # if we fail, use regular cover size
+        if self.image is None:
+            self.image = track.album.cover()
+            if self.image is not None:
+                self.image.load(args.timeout)
+                self.image = self.image.data
+
+    def override_tags(self, idx, track, ripper):
+        args = self.args
+        tags_strings = args.tags_strings if args.tags_strings is not None else []
+
+        if args.comment is not None:
+            tags_strings.append("comment=" + args.comment)
+
+        if args.grouping is not None:
+            tags_strings.append("grouping=" + args.grouping)
+
+        overridable_fieldnames = {
+            "album", "title", "artists", "album_artist", "year", "num_discs",
+            "num_tracks", "comment", "grouping", "genres"
+        }
+
+        for tag_string in tags_strings:
+            str_tokens = tags_string.strip().split("=", 1)
+
+            if len(str_tokens != 2):
+                continue
+
+            if str_tokens[0] not in overridable_fieldnames:
+                print("cannot override tag: " + str_tokens[0])
+                continue
+
+            override_str =
+                format_track_string(ripper, str_tokens[1], idx, track)
+
+            if str_tokens[0] == "genres":
+                self.tags[str_tokens[0]] = ([override_str], [to_ascii(override_str, on_error)])
+            else:
+                self.tags[str_tokens[0]] = (override_str, to_ascii(override_str, on_error))
+
+    def get_field(self, field, use_ascii):
+        pair = self.tags.get(field)
+        if pair is not None:
+            return pair(0) if not use_ascii or self.args.ascii_path_only else pair(1)
+        return None
+
+    def save_cover_image(self, embed_image_func):
+        args = self.args
+
+        if self.image is not None:
+            def write_image(file_name):
+                cover_path = os.path.dirname(audio_file)
+                cover_file = os.path.join(cover_path, file_name)
+                if not path_exists(cover_file):
+                    with open(enc_str(cover_file), "wb") as f:
+                        f.write(self.image)
+
+            if args.cover_file is not None:
+                write_image(args.cover_file)
+            elif args.cover_file_and_embed is not None:
+                write_image(args.cover_file_and_embed)
+                embed_image_func(self.image)
+            else:
+                embed_image_func(self.image)
+
+    def album(self, use_ascii=True):
+        return self.get_field("album", use_ascii)
+
+    def title(self, use_ascii=True):
+        return self.get_field("title", use_ascii)
+
+    def artists(self, use_ascii=True):
+        return self.get_field("artists", use_ascii)
+
+    def album_artist(self, use_ascii=True):
+        return self.get_field("album_artist", use_ascii)
+
+    def year(self):
+        return str(self.tags.get("year"))
+
+    def num_discs(self):
+        return str(self.tags.get("num_discs"))
+
+    def num_tracks(self):
+        return str(self.tags.get("num_tracks"))
+
+    def disc_idx(self):
+        return str(self.tags.get("disc_idx"))
+
+    def track_idx(self):
+        return str(self.tags.get("track_idx"))
+
+    def track_idx_and_total(self):
+        return idx_of_total_str(self.tags.get("track_idx"),
+            self.tags.get("num_tracks"))
+
+    def disc_idx_and_total(self):
+        return idx_of_total_str(self.tags.get("disc_idx"),
+            self.tags.get("num_discs"))
+
+    def comment(self, use_ascii=True):
+        return self.get_field("comment", use_ascii)
+
+    def grouping(self, use_ascii=True):
+        return self.get_field("grouping", use_ascii)
+
+    def genres(self, use_ascii=True):
+        return self.get_field("genres", use_ascii)
+
 
 def set_metadata_tags(args, audio_file, idx, track, ripper):
     # log completed file
@@ -32,83 +196,10 @@ def set_metadata_tags(args, audio_file, idx, track, ripper):
     album_browser = track.album.browse()
     album_browser.load(args.timeout)
 
-    # calculate num of tracks on disc and num of dics
-    num_discs = 0
-    num_tracks = 0
-    for track_browse in album_browser.tracks:
-        if (track_browse.disc == track.disc and
-                track_browse.index > track.index):
-            num_tracks = track_browse.index
-        if track_browse.disc > num_discs:
-            num_discs = track_browse.disc
-
-    # try to get genres from Spotify's Web API
-    genres = None
-    if args.genres is not None:
-        genres = ripper.web.get_genres(args.genres, track)
 
     # use mutagen to update id3v2 tags and vorbis comments
     try:
         audio = None
-        on_error = 'replace' if args.ascii_path_only else 'ignore'
-        album = to_ascii(track.album.name, on_error)
-        artists = ", ".join([artist.name for artist in track.artists]) \
-            if args.all_artists else track.artists[0].name
-        artists_ascii = to_ascii(artists, on_error)
-        album_artist = to_ascii(track.album.artist.name, on_error)
-        title = to_ascii(track.name, on_error)
-
-        # the comment tag can be formatted
-        if args.comment is not None:
-            comment = \
-                format_track_string(ripper, args.comment, idx, track)
-            comment_ascii = to_ascii(comment, on_error)
-
-        if args.grouping is not None:
-            grouping = \
-                format_track_string(ripper, args.grouping, idx, track)
-            grouping_ascii = to_ascii(grouping, on_error)
-
-        if genres is not None and genres:
-            genres_ascii = [to_ascii(genre) for genre in genres]
-
-        # cover art image
-        image = None
-        if args.large_cover_art:
-            image = ripper.web.get_large_coverart(track.link.uri)
-
-        # if we fail, use regular cover size
-        if image is None:
-            image = track.album.cover()
-            if image is not None:
-                image.load(args.timeout)
-                image = image.data
-
-        def tag_to_ascii(_str, _str_ascii):
-            return _str if args.ascii_path_only else _str_ascii
-
-        def idx_of_total_str(_idx, _total):
-            if _total > 0:
-                return "%d/%d" % (_idx, _total)
-            else:
-                return "%d" % (_idx)
-
-        def save_cover_image(embed_image_func):
-            if image is not None:
-                def write_image(file_name):
-                    cover_path = os.path.dirname(audio_file)
-                    cover_file = os.path.join(cover_path, file_name)
-                    if not path_exists(cover_file):
-                        with open(enc_str(cover_file), "wb") as f:
-                            f.write(image)
-
-                if args.cover_file is not None:
-                    write_image(args.cover_file)
-                elif args.cover_file_and_embed is not None:
-                    write_image(args.cover_file_and_embed)
-                    embed_image_func(image)
-                else:
-                    embed_image_func(image)
 
         def set_id3_tags(audio):
             # add ID3 tag if it doesn't exist
