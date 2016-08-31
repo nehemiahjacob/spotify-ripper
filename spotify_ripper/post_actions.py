@@ -169,7 +169,7 @@ class PostActions(object):
         ripper = self.ripper
 
         name = self.get_playlist_name()
-        if name is not None and args.playlist_m3u:
+        if name is not None and (args.playlist_m3u or args.absolute_m3u):
             name = sanitize_playlist_name(to_ascii(name))
             _base_dir = base_dir()
             playlist_path = to_ascii(
@@ -187,11 +187,11 @@ class PostActions(object):
                     _file = ripper.format_track_path(idx, track)
                     if path_exists(_file):
                         if (args.absolute_m3u):
-                            playlist.write(os.path.join(_base_dir, _file)
-                                + "\n")
+                            playlist.write(os.path.join(_base_dir, _file) + 
+                                "\n")
                         else:
-                            playlist.write(os.path.relpath(_file, _base_dir) 
-                                + "\n")
+                            playlist.write(os.path.relpath(_file, _base_dir) + 
+                                "\n")
 
     def create_playlist_wpl(self, tracks):
         args = self.args
