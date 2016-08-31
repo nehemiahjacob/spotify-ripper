@@ -289,6 +289,8 @@ def main(prog_args=sys.argv[1:]):
     parser.add_argument(
         '--playlist-m3u', action='store_true',
         help='create a m3u file when ripping a playlist')
+    parser.add_argument('--kodi-m3u', action='store_true'
+        help='creates the m3u file in OSMC/kodis default playlist dir (~/.kodi/userdata/playlists/music)')
     parser.add_argument(
         '--absolute-m3u', action='store_true',
         help='uses absolute path in m3u file')

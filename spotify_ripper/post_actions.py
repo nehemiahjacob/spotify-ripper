@@ -173,7 +173,8 @@ class PostActions(object):
             name = sanitize_playlist_name(to_ascii(name))
             _base_dir = base_dir()
             playlist_path = to_ascii(
-                os.path.join(_base_dir, name + '.m3u'))
+                os.path.join('~/.kodi/userdata/playlists/music' if args.kodi_m3u else _base_dir, name + '.m3u'))
+            
 
             print(Fore.GREEN + "Creating playlist m3u file " +
                   playlist_path + Fore.RESET)
