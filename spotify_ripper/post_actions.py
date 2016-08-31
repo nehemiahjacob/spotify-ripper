@@ -186,8 +186,10 @@ class PostActions(object):
                         continue
                     _file = ripper.format_track_path(idx, track)
                     if path_exists(_file):
-                        playlist.write(os.path.relpath(_file, _base_dir) +
-                                       "\n")
+                        if (args.absolute_m3u):
+                            playlist.write(os.path.join(_base_dir, _file + "\n"))
+                        else:
+                            playlist.write(os.path.relpath(_file, _base_dir + "\n"))
 
     def create_playlist_wpl(self, tracks):
         args = self.args

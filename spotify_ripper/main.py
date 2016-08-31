@@ -290,6 +290,9 @@ def main(prog_args=sys.argv[1:]):
         '--playlist-m3u', action='store_true',
         help='create a m3u file when ripping a playlist')
     parser.add_argument(
+        '--absolute-m3u', action='store_true',
+        help='uses absolute path in m3u file')
+    parser.add_argument(
         '--playlist-wpl', action='store_true',
         help='create a wpl file when ripping a playlist')
     parser.add_argument(
