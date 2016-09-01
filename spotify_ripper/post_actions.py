@@ -170,7 +170,6 @@ class PostActions(object):
 
         name = self.get_playlist_name()
         if name is not None and (args.playlist_m3u or args.absolute_m3u):
-            print(str(args.absolute_m3u))
             name = sanitize_playlist_name(to_ascii(name))
             _base_dir = base_dir()
             m3u_path = args.custom_m3u
