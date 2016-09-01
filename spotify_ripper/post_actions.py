@@ -172,9 +172,19 @@ class PostActions(object):
         if name is not None and (args.playlist_m3u or args.absolute_m3u):
             name = sanitize_playlist_name(to_ascii(name))
             _base_dir = base_dir()
-            playlist_path = to_ascii(
-                os.path.join('~/.kodi/userdata/playlists/music' if args.kodi_m3u else _base_dir, name + '.m3u'))
-            
+            m3u_path = args.custom_m3u
+            if m3u_path != None:           
+                if str(m3u_path).endswith('.m3u'):
+                    playlist_path = to_ascii(m3u_path)
+                    if not os.path.exists(os.path.dirname(m3u_path)):
+                        os.makedirs(os.path.dirname(m3u_path))
+                else:
+                    if not os.path.exists(m3u_path):
+                        os.makedirs(m3u_path)    
+                    playlist_path = to_ascii(os.path.join(m3u_path), name + '.m3u')
+            else:
+                playlist_path = to_ascii(
+                os.path.join(_base_dir, name + '.m3u'))
 
             print(Fore.GREEN + "Creating playlist m3u file " +
                   playlist_path + Fore.RESET)
@@ -187,7 +197,7 @@ class PostActions(object):
                         continue
                     _file = ripper.format_track_path(idx, track)
                     if path_exists(_file):
-                        if (args.absolute_m3u):
+                        if args.absolute_m3u:
                             playlist.write(os.path.join(_base_dir, _file) + 
                                 "\n")
                         else:
