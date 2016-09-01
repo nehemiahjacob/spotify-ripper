@@ -288,12 +288,13 @@ def main(prog_args=sys.argv[1:]):
              'values as --resume-after [Default=abort]')
     parser.add_argument(
         '--playlist-m3u', action='store_true',
-        help='create a m3u file when ripping a playlist')
-    parser.add_argument('--custom-m3u',
-        help='creates the m3u file in another directory [Default=None]')
+        help='create a m3u file with relative paths when ripping a playlist')
     parser.add_argument(
-        '--absolute-m3u', action='store_false',
-        help='uses absolute path in m3u file')
+        '--absolute-m3u', action='store_true', default=False,
+        help='create a m3u file with absolute paths when ripping a playlist')
+    parser.add_argument(
+        '--custom-m3u',
+        help='creates the m3u file in another directory [Default=None]')
     parser.add_argument(
         '--playlist-wpl', action='store_true',
         help='create a wpl file when ripping a playlist')
