@@ -95,6 +95,19 @@ def patch_bug_in_mutagen():
     MP4Tags._MP4Tags__atoms[b"covr"] = (
         MP4Tags._MP4Tags__parse_cover, MP4Tags.__fixed_render_cover)
 
+def partial_check_type(v):
+    valid_choices = {'none', 'weak', 'strict'}
+
+    if v in valid_choices:
+        return v
+
+    # allow user to override the "wiggle-room" for a weak check
+    import re
+    try:
+        return re.match("^weak:[0-9]+$", v).group(0)
+    except:
+        raise argparse.ArgumentTypeError("String '" + v +
+            "' does not match none, weak, weak:<sec>, strict")
 
 def main(prog_args=sys.argv[1:]):
     # in case we changed the location of the settings directory where the
@@ -276,10 +289,12 @@ def main(prog_args=sys.argv[1:]):
         '--opus', action='store_true',
         help='Rip songs to Opus encoding instead of MP3')
     parser.add_argument(
-        '--partial-check', choices=['none', 'weak', 'strict'],
+        '--partial-check', metavar="{none,weak,weak:<sec>,strict}", type=partial_check_type,
         help='Check for and overwrite partially ripped files. "weak" will '
              'err on the side of not re-ripping the file if it is unsure, '
-             'whereas "strict" will re-rip the file [Default=weak]')
+             'whereas "strict" will re-rip the file.  You can override the '
+             'number of seconds of wiggle-room for the "weak" check using '
+             '"weak:<sec>" [Default=weak:3]')
     parser.add_argument(
         '--play-token-resume', metavar="RESUME_AFTER",
         help='If the \'play token\' is lost to a different device using '

@@ -433,7 +433,7 @@ def format_size(size, short=False):
 # returns true if audio_file is a partial of track
 def is_partial(audio_file, track):
     args = get_args()
-    if (args.partial_check == "none"):
+    if args.partial_check == "none":
         return False
 
     def audio_file_duration(audio_file):
@@ -446,12 +446,15 @@ def is_partial(audio_file, track):
     audio_file_dur = audio_file_duration(audio_file)
 
     # for 'weak', give a ~1.5 second wiggle-room
-    if (args.partial_check == "strict"):
+    if args.partial_check == "strict":
         return (audio_file_dur is None or
             track.duration > (audio_file_dur * 1000))
     else:
+        wiggle_room = max((track.duration * 0.01), 3000) if \
+            args.partial_check == "weak" else \
+            int(args.partial_check.split(":")[1]) * 1000
         return (audio_file_dur is not None and
-            (track.duration - 1500) > (audio_file_dur * 1000))
+            (track.duration - wiggle_room) > (audio_file_dur * 1000))
 
 
 # borrowed from eyeD3
