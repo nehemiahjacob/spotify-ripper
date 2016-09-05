@@ -164,27 +164,41 @@ class PostActions(object):
         else:
             return None
 
+    def get_playlist_path(self, name, ext):
+        ext = "." + ext
+
+        if self.args.playlist_directory is not None:
+            playlist_dir = self.args.playlist_directory
+
+            # check to see if we were passed in a playlist filename
+            if playlist_dir.endswith(ext):
+                playlist_file = playlist_dir
+                playlist_dir = os.path.dirname(playlist_dir)
+            else:
+                playlist_file = to_ascii(os.path.join(playlist_dir, name + ext))
+
+            # ensure path exists
+            if not os.path.exists(playlist_dir):
+                os.makedirs(playlist_dir)
+            return playlist_file
+        else:
+            return to_ascii(os.path.join(base_dir(), name + ext))
+
+    def get_playlist_file_path(self, _file):
+        _base_dir = base_dir()
+        if self.args.playlist_absolute_paths:
+            return os.path.join(_base_dir, _file)
+        else:
+            return os.path.relpath(_file, _base_dir)
+
     def create_playlist_m3u(self, tracks):
         args = self.args
         ripper = self.ripper
 
         name = self.get_playlist_name()
-        if name is not None and (args.playlist_m3u or args.absolute_m3u):
+        if name is not None and args.playlist_m3u:
             name = sanitize_playlist_name(to_ascii(name))
-            _base_dir = base_dir()
-            m3u_path = args.custom_m3u
-            if m3u_path != None:           
-                if str(m3u_path).endswith('.m3u'):
-                    playlist_path = to_ascii(m3u_path)
-                    if not os.path.exists(os.path.dirname(m3u_path)):
-                        os.makedirs(os.path.dirname(m3u_path))
-                else:
-                    if not os.path.exists(m3u_path):
-                        os.makedirs(m3u_path)    
-                    playlist_path = to_ascii(os.path.join(m3u_path), name + '.m3u')
-            else:
-                playlist_path = to_ascii(
-                os.path.join(_base_dir, name + '.m3u'))
+            playlist_path = self.get_playlist_path(name, "m3u")
 
             print(Fore.GREEN + "Creating playlist m3u file " +
                   playlist_path + Fore.RESET)
@@ -197,11 +211,7 @@ class PostActions(object):
                         continue
                     _file = ripper.format_track_path(idx, track)
                     if path_exists(_file):
-                        if args.absolute_m3u:
-                            playlist.write(os.path.join(_base_dir, _file) + 
-                                "\n")
-                        else:
-                            playlist.write(os.path.relpath(_file, _base_dir) + 
+                        playlist.write(self.get_playlist_file_path(_file) +
                                 "\n")
 
     def create_playlist_wpl(self, tracks):
@@ -211,9 +221,7 @@ class PostActions(object):
         name = self.get_playlist_name()
         if name is not None and args.playlist_wpl:
             name = sanitize_playlist_name(to_ascii(name))
-            _base_dir = base_dir()
-            playlist_path = to_ascii(
-                os.path.join(_base_dir, name + '.wpl'))
+            playlist_path = self.get_playlist_path(name, "wpl")
 
             print(Fore.GREEN + "Creating playlist wpl file " +
                   playlist_path + Fore.RESET)
@@ -249,7 +257,7 @@ class PostActions(object):
                     _file.replace("&", "&amp;")
                     _file.replace("'", "&apos;")
                     playlist.write('\t\t\t<media src="' +
-                                   os.path.relpath(_file, _base_dir) +
+                                   self.get_playlist_file_path(_file) +
                                    "\"/>\n")
                 playlist.write('\t\t</seq>\n')
                 playlist.write('\t</body>\n')
