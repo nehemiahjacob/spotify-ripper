@@ -260,6 +260,9 @@ class Ripper(threading.Thread):
                     if self.abort.is_set():
                         break
 
+                    # before we skip or can fail loading the track
+                    self.progress.increment_track_idx()
+
                     print('Loading track...')
                     track.load(args.timeout)
                     if track.availability != 1 or track.is_local:
