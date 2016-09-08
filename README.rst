@@ -498,7 +498,7 @@ In addition to MP3 encoding, ``spotify-ripper`` supports encoding to FLAC, AAC, 
     $ sudo apt-get install opus-tools
 
     # SoX
-    $ sudo apt-get install install sox
+    $ sudo apt-get install sox
 
 
 Upgrade
