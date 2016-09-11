@@ -3,18 +3,22 @@
 from __future__ import unicode_literals
 
 from colorama import Fore, Style
-from mutagen import mp3, id3, flac, aiff, oggvorbis, oggopus, aac
+from mutagen import mp3, id3, flac, aiff, oggvorbis, oggopus, aac, mp4
 from stat import ST_SIZE
 from spotify_ripper.utils import *
-from datetime import datetime
 import os
 import sys
 import base64
 
+if sys.version_info < (3, 0):
+    from mutagen import m4a
+
+
 class Tags(object):
 
-    def __init__(self, args, idx, track, ripper):
+    def __init__(self, args, audio_file, idx, track, ripper):
         self.args = args
+        self.audio_file = audio_file
         self.on_error = 'replace' if args.ascii_path_only else 'ignore'
 
         self.tags = {}
@@ -32,6 +36,9 @@ class Tags(object):
 
     def populate_tags(self, track, ripper):
         args = self.args
+
+        album_browser = track.album.browse()
+        album_browser.load(args.timeout)
 
         self.tags['album'] = self.create_pair(track.album.name)
         artists = ", ".join([artist.name for artist in track.artists]) \
@@ -75,41 +82,41 @@ class Tags(object):
 
     def override_tags(self, idx, track, ripper):
         args = self.args
-        tags_strings = args.tags_strings if args.tags_strings is not None else []
+        tag_overrides = args.tag_override if args.tag_override is not None else []
 
         if args.comment is not None:
-            tags_strings.append("comment=" + args.comment)
+            tag_overrides.append("comment=" + args.comment)
 
         if args.grouping is not None:
-            tags_strings.append("grouping=" + args.grouping)
+            tag_overrides.append("grouping=" + args.grouping)
 
         overridable_fieldnames = {
             "album", "title", "artists", "album_artist", "year", "num_discs",
             "num_tracks", "comment", "grouping", "genres"
         }
 
-        for tag_string in tags_strings:
-            str_tokens = tags_string.strip().split("=", 1)
+        for override in tag_overrides:
+            tokens = override.strip().split("=", 1)
 
-            if len(str_tokens != 2):
+            if len(tokens) != 2:
                 continue
 
-            if str_tokens[0] not in overridable_fieldnames:
-                print("cannot override tag: " + str_tokens[0])
+            if tokens[0] not in overridable_fieldnames:
+                print("cannot override tag: " + tokens[0])
                 continue
 
-            override_str =
-                format_track_string(ripper, str_tokens[1], idx, track)
+            override_str = \
+                format_track_string(ripper, tokens[1], idx, track)
 
-            if str_tokens[0] == "genres":
-                self.tags[str_tokens[0]] = ([override_str], [to_ascii(override_str, on_error)])
+            if tokens[0] == "genres":
+                self.tags[tokens[0]] = ([override_str], [to_ascii(override_str, self.on_error)])
             else:
-                self.tags[str_tokens[0]] = (override_str, to_ascii(override_str, on_error))
+                self.tags[tokens[0]] = (override_str, to_ascii(override_str, self.on_error))
 
     def get_field(self, field, use_ascii):
         pair = self.tags.get(field)
         if pair is not None:
-            return pair(0) if not use_ascii or self.args.ascii_path_only else pair(1)
+            return pair[0] if not use_ascii or self.args.ascii_path_only else pair[1]
         return None
 
     def save_cover_image(self, embed_image_func):
@@ -117,7 +124,7 @@ class Tags(object):
 
         if self.image is not None:
             def write_image(file_name):
-                cover_path = os.path.dirname(audio_file)
+                cover_path = os.path.dirname(self.audio_file)
                 cover_file = os.path.join(cover_path, file_name)
                 if not path_exists(cover_file):
                     with open(enc_str(cover_file), "wb") as f:
@@ -159,14 +166,14 @@ class Tags(object):
         return str(self.tags.get("track_idx"))
 
     def track_idx_and_total(self):
-        return idx_of_total_str(self.tags.get("track_idx"),
+        return self.idx_of_total_str(self.tags.get("track_idx"),
             self.tags.get("num_tracks"))
 
     def track_idx_total_pair(self):
         return (self.tags.get("track_idx"), self.tags.get("num_tracks"))
 
     def disc_idx_and_total(self):
-        return idx_of_total_str(self.tags.get("disc_idx"),
+        return self.idx_of_total_str(self.tags.get("disc_idx"),
             self.tags.get("num_discs"))
 
     def disc_idx_total_pair(self):
@@ -181,14 +188,14 @@ class Tags(object):
     def genres(self, use_ascii=True):
         return self.get_field("genres", use_ascii)
 
-    def has_genres():
+    def has_genres(self):
         return self.genres() is not None and self.genres()
 
 
 class Id3Tags(Tags):
 
-    def __init__(self, args, idx, track, ripper):
-        super(Id3Tags, self).__init__(args, idx, track, ripper)
+    def __init__(self, args, audio_file, idx, track, ripper):
+        super(Id3Tags, self).__init__(args, audio_file, idx, track, ripper)
 
     def set_tags(self, audio):
         # add ID3 tag if it doesn't exist
@@ -231,21 +238,23 @@ class Id3Tags(Tags):
             tcon_tag.genres = self.genres()
             audio.tags.add(tcon_tag)
 
-        if args.id3_v23:
+        if self.args.id3_v23:
             audio.tags.update_to_v23()
             audio.save(v2_version=3, v23_sep='/')
             audio.tags.version = (2, 3, 0)
         else:
             audio.save()
 
+
+# AAC is not well supported
 class RawId3Tags(Tags):
 
-    def __init__(self, args, idx, track, ripper):
-        super(RawId3Tags, self).__init__(args, idx, track, ripper)
+    def __init__(self, args, audio_file, idx, track, ripper):
+        super(RawId3Tags, self).__init__(args, audio_file, idx, track, ripper)
 
     def set_tags(self, audio):
         try:
-            id3_dict = id3.ID3(audio_file)
+            id3_dict = id3.ID3(self.audio_file)
         except id3.ID3NoHeaderError:
             id3_dict = id3.ID3()
 
@@ -286,19 +295,19 @@ class RawId3Tags(Tags):
             tcon_tag.genres = self.genres()
             id3_dict.add(tcon_tag)
 
-        if args.id3_v23:
+        if self.args.id3_v23:
             id3_dict.update_to_v23()
-            id3_dict.save(audio_file, v2_version=3, v23_sep='/')
+            id3_dict.save(self.audio_file, v2_version=3, v23_sep='/')
             id3_dict.version = (2, 3, 0)
         else:
-            id3_dict.save(audio_file)
+            id3_dict.save(self.audio_file)
         audio.tags = id3_dict
 
 
 class VorbisTags(Tags):
 
-    def __init__(self, args, idx, track, ripper):
-        super(VorbisTags, self).__init__(args, idx, track, ripper)
+    def __init__(self, args, audio_file, idx, track, ripper):
+        super(VorbisTags, self).__init__(args, audio_file, idx, track, ripper)
 
     def set_tags(self, audio):
         # add Vorbis comment block if it doesn't exist
@@ -311,7 +320,7 @@ class VorbisTags(Tags):
             pic.mime = "image/jpeg"
             pic.desc = "Front Cover"
             pic.data = data
-            if args.output_type == "flac":
+            if self.args.output_type == "flac":
                 audio.add_picture(pic)
             else:
                 data = base64.b64encode(pic.write())
@@ -350,8 +359,8 @@ class VorbisTags(Tags):
 # only called by Python 3
 class MP4Tags(Tags):
 
-    def __init__(self, args, idx, track, ripper):
-        super(MP4Tags, self).__init__(args, idx, track, ripper)
+    def __init__(self, args, audio_file, idx, track, ripper):
+        super(MP4Tags, self).__init__(args, audio_file, idx, track, ripper)
 
     def set_tags(self, audio):
         # add MP4 tags if it doesn't exist
@@ -387,10 +396,11 @@ class MP4Tags(Tags):
 
         audio.save()
 
+
 class M4ATags(Tags):
 
-    def __init__(self, args, idx, track, ripper):
-        super(M4ATags, self).__init__(args, idx, track, ripper)
+    def __init__(self, args, audio_file, idx, track, ripper):
+        super(M4ATags, self).__init__(args, audio_file, idx, track, ripper)
 
     def set_tags(self, audio):
         # add M4A tags if it doesn't exist
@@ -425,6 +435,7 @@ class M4ATags(Tags):
 
         audio.save()
 
+
 def set_metadata_tags(args, audio_file, idx, track, ripper):
     # log completed file
     print(Fore.GREEN + Style.BRIGHT + os.path.basename(audio_file) +
@@ -442,8 +453,6 @@ def set_metadata_tags(args, audio_file, idx, track, ripper):
         track.load(args.timeout)
     if not track.album.is_loaded:
         track.album.load(args.timeout)
-    album_browser = track.album.browse()
-    album_browser.load(args.timeout)
 
     # use mutagen to update audio file tags
     try:
@@ -452,50 +461,46 @@ def set_metadata_tags(args, audio_file, idx, track, ripper):
 
         if args.output_type == "flac":
             audio = flac.FLAC(audio_file)
-            tags = new VorbisTags(args, idx, track, ripper)
+            tags = VorbisTags(args, audio_file, idx, track, ripper)
             tags.set_tags(audio)
 
         elif args.output_type == "aiff":
             audio = aiff.AIFF(audio_file)
-            tags = new Id3Tags(args, idx, track, ripper)
+            tags = Id3Tags(args, audio_file, idx, track, ripper)
             tags.set_tags(audio)
 
         elif args.output_type == "ogg":
             audio = oggvorbis.OggVorbis(audio_file)
-            tags = new VorbisTags(args, idx, track, ripper)
+            tags = VorbisTags(args, audio_file, idx, track, ripper)
             tags.set_tags(audio)
 
         elif args.output_type == "opus":
             audio = oggopus.OggOpus(audio_file)
-            tags = new VorbisTags(args, idx, track, ripper)
+            tags = VorbisTags(args, audio_file, idx, track, ripper)
             tags.set_tags(audio)
 
         elif args.output_type == "aac":
             audio = aac.AAC(audio_file)
-            tags = new RawId3Tags(args, idx, track, ripper)
+            tags = RawId3Tags(args, audio_file, idx, track, ripper)
             tags.set_tags(audio)
 
         elif args.output_type == "m4a" or args.output_type == "alac.m4a":
             if sys.version_info >= (3, 0):
-                from mutagen import mp4
-
                 audio = mp4.MP4(audio_file)
-                tags = new MP4Tags(args, idx, track, ripper)
+                tags = MP4Tags(args, audio_file, idx, track, ripper)
                 tags.set_tags(audio)
             else:
-                from mutagen import m4a, mp4
-
                 audio = m4a.M4A(audio_file)
-                tags = new M4ATags(args, idx, track, ripper)
+                tags = M4ATags(args, audio_file, idx, track, ripper)
                 tags.set_tags(audio)
                 audio = mp4.MP4(audio_file)
 
         elif args.output_type == "mp3":
             audio = mp3.MP3(audio_file, ID3=id3.ID3)
-            tags = new Id3Tags(args, idx, track, ripper)
+            tags = Id3Tags(args, audio_file, idx, track, ripper)
             tags.set_tags(audio)
 
-
+        # utility functions
         def bit_rate_str(bit_rate):
             brs = "%d kb/s" % bit_rate
             if not args.cbr:
@@ -536,8 +541,8 @@ def set_metadata_tags(args, audio_file, idx, track, ripper):
         if tags.image is not None:
             print_yellow("Adding cover image")
 
-        if tags.comments() is not None:
-            print_yellow("Adding comment: " + tags.comments())
+        if tags.comment() is not None:
+            print_yellow("Adding comment: " + tags.comment())
 
         if tags.grouping() is not None:
             print_yellow("Adding grouping: " + tags.grouping())

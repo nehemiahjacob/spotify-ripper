@@ -34,7 +34,7 @@ def load_config(defaults):
                 return defaults
             config_items = dict(config.items("main"))
 
-            to_array_options = ["replace"]
+            to_array_options = ["replace", "tag_override"]
 
             # coerce boolean and none types
             config_items_new = {}
@@ -354,6 +354,9 @@ def main(prog_args=sys.argv[1:]):
         help='Stops script after a certain amount of time has passed '
              '(e.g. 1h30m). Alternatively, accepts a specific time in 24hr '
              'format to stop after (e.g 03:30, 16:15)')
+    parser.add_argument(
+        '--tag-override', nargs="+", required=False,
+        help='Overrides a metadata tag with custom data (e.g. \'album={playlist}\')')
     parser.add_argument(
         '--timeout', type=int,
         help='Override the PySpotify timeout value in seconds (Default=10 seconds)')
