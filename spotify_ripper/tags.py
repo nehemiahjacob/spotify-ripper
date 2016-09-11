@@ -188,9 +188,6 @@ class Tags(object):
     def genres(self, use_ascii=True):
         return self.get_field("genres", use_ascii)
 
-    def has_genres(self):
-        return self.genres() is not None and self.genres()
-
 
 class Id3Tags(Tags):
 
@@ -233,7 +230,7 @@ class Id3Tags(Tags):
         if self.grouping() is not None:
             audio.tags.add(id3.TIT1(text=[self.grouping()], encoding=3))
 
-        if self.has_genres():
+        if self.genres() is not None:
             tcon_tag = id3.TCON(encoding=3)
             tcon_tag.genres = self.genres()
             audio.tags.add(tcon_tag)
@@ -290,7 +287,7 @@ class RawId3Tags(Tags):
         if self.grouping() is not None:
             id3_dict.add(id3.TIT1(text=[self.grouping()], encoding=3))
 
-        if self.has_genres():
+        if self.genres() is not None:
             tcon_tag = id3.TCON(encoding=3)
             tcon_tag.genres = self.genres()
             id3_dict.add(tcon_tag)
@@ -350,7 +347,7 @@ class VorbisTags(Tags):
         if self.grouping() is not None:
             audio.tags["GROUPING"] = self.grouping()
 
-        if self.has_genres():
+        if self.genres() is not None:
             audio.tags["GENRE"] = ", ".join(self.genres())
 
         audio.save()
@@ -391,7 +388,7 @@ class MP4Tags(Tags):
         if self.grouping() is not None:
             audio.tags["\xa9grp"] = self.grouping()
 
-        if self.has_genres():
+        if self.genres() is not None:
             audio.tags["\xa9gen"] = ", ".join(self.genres())
 
         audio.save()
@@ -430,7 +427,7 @@ class M4ATags(Tags):
         if self.grouping() is not None:
             audio.tags[b"\xa9grp"] = self.grouping()
 
-        if self.has_genres():
+        if self.genres() is not None:
             audio.tags[b"\xa9gen"] = ", ".join(self.genres())
 
         audio.save()
@@ -535,7 +532,7 @@ def set_metadata_tags(args, audio_file, idx, track, ripper):
             tags.num_discs() + ")")
         print_yellow("Setting release year: " + tags.year())
 
-        if tags.has_genres():
+        if tags.genres() is not None:
             print_yellow("Setting genres: " + " / ".join(tags.genres()))
 
         if tags.image is not None:
