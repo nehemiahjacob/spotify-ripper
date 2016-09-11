@@ -95,15 +95,19 @@ Command Line
                           [--grouping GROUPING] [--id3-v23] [-k KEY] [-u USER]
                           [-p PASSWORD] [--large-cover-art] [-l] [-L LOG] [--pcm]
                           [--mp4] [--normalize] [-na] [-o] [--opus]
-                          [--partial-check {none,weak,strict}]
+                          [--partial-check {none,weak,weak:<sec>,strict}]
                           [--play-token-resume RESUME_AFTER] [--playlist-m3u]
+                          [--playlist-absolute-paths]
+                          [--playlist-directory PLAYLIST_DIRECTORY]
                           [--playlist-wpl] [--playlist-sync] [--plus-pcm]
                           [--plus-wav] [-q VBR] [-Q {160,320,96}]
                           [--remove-offline-cache] [--resume-after RESUME_AFTER]
                           [-R REPLACE [REPLACE ...]] [-s]
                           [--stereo-mode {j,s,f,d,m,l,r}]
-                          [--stop-after STOP_AFTER] [--timeout TIMEOUT] [-V]
-                          [--wav] [--windows-safe] [--vorbis] [-r]
+                          [--stop-after STOP_AFTER]
+                          [--tag-override TAG_OVERRIDE [TAG_OVERRIDE ...]]
+                          [--timeout TIMEOUT] [-V] [--wav] [--windows-safe]
+                          [--vorbis] [-r]
                           uri [uri ...]
 
     Rips Spotify URIs to MP3s with ID3 tags and album covers
@@ -168,6 +172,10 @@ Command Line
       --play-token-resume RESUME_AFTER
                             If the 'play token' is lost to a different device using the same Spotify account, the script will wait a speficied amount of time before restarting. This argument takes the same values as --resume-after [Default=abort]
       --playlist-m3u        create a m3u file when ripping a playlist
+      --playlist-absolute-paths
+                            creates the playlist file with absolute paths instead of relative
+      --playlist-directory PLAYLIST_DIRECTORY
+                            creates the playlist file in another directory [Default=Song Directory]
       --playlist-wpl        create a wpl file when ripping a playlist
       --playlist-sync       Sync playlist songs (rename and remove old songs)
       --plus-pcm            Saves a .pcm file in addition to the encoded file (e.g. mp3)
@@ -186,6 +194,8 @@ Command Line
                             Advanced stereo settings for Lame MP3 encoder only
       --stop-after STOP_AFTER
                             Stops script after a certain amount of time has passed (e.g. 1h30m). Alternatively, accepts a specific time in 24hr format to stop after (e.g 03:30, 16:15)
+      --tag-override TAG_OVERRIDE [TAG_OVERRIDE ...]
+                            Overrides a metadata tag with custom data (e.g. 'album={playlist}')
       --timeout TIMEOUT     Override the PySpotify timeout value in seconds (Default=10 seconds)
       -V, --version         show program's version number and exit
       --wav                 Rip songs to uncompressed WAV file instead of MP3
