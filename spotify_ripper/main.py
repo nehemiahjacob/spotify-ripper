@@ -591,7 +591,7 @@ def main(prog_args=sys.argv[1:]):
     def check_uri_args():
         if len(args.uri) == 1 and path_exists(args.uri[0]):
             encoding = "ascii" if args.ascii else "utf-8"
-            args.uri = [line.strip() for line in
+            args.uri = [line.split("#", 1)[0].strip() for line in
                 codecs.open(enc_str(args.uri[0]), 'r', encoding)
                 if not line.strip().startswith("#") and len(line.strip()) > 0]
         elif len(args.uri) == 1 and not args.uri[0].startswith("spotify:"):
