@@ -44,6 +44,20 @@ def print_str(_str):
             sys.stdout.flush()
 
 
+# common print colors
+def print_yellow(_str):
+    print(Fore.YELLOW + _str + Fore.RESET)
+
+def print_red(_str):
+    print(Fore.RED + _str + Fore.RESET)
+
+def print_cyan(_str):
+    print(Fore.CYAN + _str + Fore.RESET)
+
+def print_green(_str):
+    print(Fore.GREEN + _str + Fore.RESET)
+
+
 def norm_path(path):
     """normalize path"""
     return os.path.normpath(os.path.realpath(path))
