@@ -179,6 +179,38 @@ def change_file_extension(file_name, ext):
     return os.path.splitext(file_name)[0] + "." + ext
 
 
+def make_windows_safe(file_name):
+    # in case the file name is too long
+    def truncate(_str, max_size):
+        return _str[:max_size].strip() if len(_str) > max_size else _str
+
+    def truncate_dir_path(dir_path):
+        path_tokens = dir_path.split(os.sep)
+        path_tokens = [truncate(token, 255) for token in path_tokens]
+        return os.sep.join(path_tokens)
+
+    def truncate_file_name(file_name):
+        tokens = file_name.rsplit(os.extsep, 1)
+        if len(tokens) > 1:
+            tokens[0] = truncate(tokens[0], 255 - len(tokens[1]) - 1)
+        else:
+            tokens[0] = truncate(tokens[0], 255)
+        return os.extsep.join(tokens)
+
+    # ensure each component in path is no more than 255 chars long
+    tokens = file_name.rsplit(os.sep, 1)
+    if len(tokens) > 1:
+        file_name = os.path.join(
+            truncate_dir_path(tokens[0]), truncate_file_name(tokens[1]))
+    else:
+        file_name = truncate_file_name(tokens[0])
+
+    # remove not allowed characters in filename (windows)
+    file_name = re.sub('[:"*?<>|]', '', file_name)
+
+    return file_name
+
+
 def format_track_string(ripper, format_string, idx, track):
     args = get_args()
     current_album = ripper.current_album

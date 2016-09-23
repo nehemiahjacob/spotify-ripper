@@ -200,6 +200,10 @@ class PostActions(object):
             name = sanitize_playlist_name(to_ascii(name))
             playlist_path = self.get_playlist_path(name, "m3u")
 
+            # make safe for windows file systems
+            if args.windows_safe:
+                playlist_path = make_windows_safe(playlist_path)
+
             print(Fore.GREEN + "Creating playlist m3u file " +
                   playlist_path + Fore.RESET)
 
@@ -222,6 +226,10 @@ class PostActions(object):
         if name is not None and args.playlist_wpl:
             name = sanitize_playlist_name(to_ascii(name))
             playlist_path = self.get_playlist_path(name, "wpl")
+
+            # make safe for windows file systems
+            if args.windows_safe:
+                playlist_path = make_windows_safe(playlist_path)
 
             print(Fore.GREEN + "Creating playlist wpl file " +
                   playlist_path + Fore.RESET)

@@ -617,39 +617,13 @@ class Ripper(threading.Thread):
         audio_file = \
             format_track_string(self, args.format.strip(), idx, track)
 
-        # in case the file name is too long
-        def truncate(_str, max_size):
-            return _str[:max_size].strip() if len(_str) > max_size else _str
-
-        def truncate_dir_path(dir_path):
-            path_tokens = dir_path.split(os.sep)
-            path_tokens = [truncate(token, 255) for token in path_tokens]
-            return os.sep.join(path_tokens)
-
-        def truncate_file_name(file_name):
-            tokens = file_name.rsplit(os.extsep, 1)
-            if len(tokens) > 1:
-                tokens[0] = truncate(tokens[0], 255 - len(tokens[1]) - 1)
-            else:
-                tokens[0] = truncate(tokens[0], 255)
-            return os.extsep.join(tokens)
-
-        # ensure each component in path is no more than 255 chars long
-        if args.windows_safe:
-            tokens = audio_file.rsplit(os.sep, 1)
-            if len(tokens) > 1:
-                audio_file = os.path.join(
-                    truncate_dir_path(tokens[0]), truncate_file_name(tokens[1]))
-            else:
-                audio_file = truncate_file_name(tokens[0])
-
         # replace filename
         if args.replace is not None:
             audio_file = self.replace_filename(audio_file, args.replace)
 
-        # remove not allowed characters in filename (windows)
+        # make safe for windows file systems
         if args.windows_safe:
-            audio_file = re.sub('[:"*?<>|]', '', audio_file)
+            audio_file = make_windows_safe(audio_file)
 
         # prepend base_dir
         audio_file = to_ascii(os.path.join(base_dir(), audio_file))
