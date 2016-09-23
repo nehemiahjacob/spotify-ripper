@@ -606,12 +606,12 @@ class Ripper(threading.Thread):
             self.session.logout()
             self.logged_out.wait()
 
-    def format_track_path(self, idx, track):
+    def format_track_path(self, idx, track, use_cache=True):
         args = self.args
 
         # check if we cached the result already
         track.load(args.timeout)
-        if track.link.uri in self.track_path_cache:
+        if use_cache and track.link.uri in self.track_path_cache:
             return self.track_path_cache[track.link.uri]
 
         audio_file = \
@@ -636,7 +636,8 @@ class Ripper(threading.Thread):
         if not path_exists(audio_path):
             os.makedirs(enc_str(audio_path))
 
-        self.track_path_cache[track.link.uri] = audio_file
+        if use_cache:
+            self.track_path_cache[track.link.uri] = audio_file
         return audio_file
 
     def replace_filename(self, filename, pattern_list):
@@ -664,17 +665,22 @@ class Ripper(threading.Thread):
         file_size = calc_file_size(track)
         print("Track Download Size: " + format_size(file_size))
 
+        def get_extra_audio_file(ext):
+            orig_output_type = args.output_type
+            args.output_type = ext
+            audio_file = self.format_track_path(idx, track, False)
+            args.output_type = orig_output_type
+            return audio_file
+
         if args.output_type == "wav" or args.plus_wav:
-            audio_file = change_file_extension(self.audio_file, "wav") if \
-                args.output_type != "wav" else self.audio_file
+            audio_file = get_extra_audio_file("wav")
             wav_file = audio_file if sys.version_info >= (3, 0) \
                 else enc_str(audio_file)
             self.wav_file = wave.open(wav_file, "wb")
             self.wav_file.setparams((2, 2, 44100, 0, 'NONE', 'not compressed'))
 
         if args.output_type == "pcm" or args.plus_pcm:
-            audio_file = change_file_extension(self.audio_file, "pcm") if \
-                args.output_type != "pcm" else self.audio_file
+            audio_file = get_extra_audio_file("pcm")
             self.pcm_file = open(enc_str(audio_file), 'wb')
 
         audio_file_enc = enc_str(self.audio_file)
